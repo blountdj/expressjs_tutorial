@@ -2,6 +2,8 @@ Express.js tutorial by https://www.youtube.com/watch?v=nH9E25nkk3I&t=326s&pp=ygU
 
 npm i express
 npm i express-validator
+npm i cookie-parser
+npm i express-session
 
 DEV DEPENDENCIES
 npm i -D nodemon
