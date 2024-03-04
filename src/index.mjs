@@ -1,8 +1,10 @@
-import express, { response } from 'express'
+import express, { request, response } from 'express'
 import routes from './routes/index.mjs'
 import cookieParser from "cookie-parser"
 import session from 'express-session'
 import { mockUsers } from './utils/constants.mjs'
+import passport from 'passport'
+import './strategies/local-strategy.mjs'
 
 // query is used for validating query parameters (used as middleware)
 // body is used for validating request bodies
@@ -22,6 +24,11 @@ app.use(session({
         maxAge: 60000 * 60,
     }
 })) // call before routes
+
+// Must be AFTER setting up session and BEFORE routes
+app.use(passport.initialize())
+app.use(passport.session())
+
 app.use(routes)
 
 
@@ -55,21 +62,63 @@ app.get("/", (request, response) => {
 })
 
 
-
-app.post('/api/auth', (request, response) => {
-    const { body: { username, password }} = request
-    const findUser = mockUsers.find(
-        (user) => user.username === username
-    )
+// example auth endpoint, not best practices
+// app.post("/api/auth", (request, response) => {
+//     const { body: { username, password}, } = request;
+//     const findUser = mockUsers.find((user) => user.username = username);
+//     if (!findUser || findUser.password !== password) return response.status(401).send({ msg: "BAD CREDENTIALS" })
     
-    if (!findUser || findUser.password !== password) 
-        return response.status(401).send({ msg: "Bad Credentials"})
+//     request.session.user = findUser;
+//     return response.status(200).send(findUser)
 
+// })
 
-    request.session.user = findUser
-    return response.status(200).send(findUser)
+app.post(
+    "/api/auth", 
+    passport.authenticate("local"), 
+    (request, response) => {
+        response.sendStatus(200)
 
 })
+
+app.get('/api/auth/status', (request, response) => {
+    console.log(`Inside /api/auth/status endpoint`)
+    console.log(request.user)
+    console.log(request.session)
+
+    return request.user
+        ? response.status(200).send(request.user)
+        : response.status(401).send({ msg: "Not Authenticated" })
+})
+
+app.post("/api/cart", (request, response) => {
+    if (!request.session.user) return response.sendStatus(401)
+    const { body: item } = request
+    const { cart } = request.session
+    if (cart) {
+        cart.push(item)
+    } else {
+        request.session.cart = [item]
+    }
+    return response.status(201).send(item)
+})
+
+app.get("/api/cart", (request, response) => {
+    if (!request.session.user) return response.sendStatus(401)
+    return response.send(request.session.cart ?? [])
+})
+
+app.post("/api/auth/logout", (request, response) => {
+    if (!request.user) return response.sendStatus(401)
+
+    request.logOut((err) => {
+        if (err) return response.sendStatus(400)
+        response.sendStatus(200)
+    })
+})
+
+
+
 
 // allows you to listen to a port for incoming requests
 app.listen(PORT, () => {
