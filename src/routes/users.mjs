@@ -4,7 +4,7 @@ import { query, validationResult, checkSchema, matchedData } from "express-valid
 import { mockUsers } from "../utils/constants.mjs"
 import { createUserValidationSchema } from "../utils/validationSchemas.mjs"
 import { resolveIndexByUserId } from './../utils/middlewares.mjs'
-
+import { User } from "../mongoose/schemas/user.mjs"
 
 const router = Router()
 
@@ -36,28 +36,49 @@ router.get(
 }
 )
 
+// OLD CODE - before using mongodb database
 // USING checkSchema - createUserValidationSchema
+// router.post("/api/users", 
+//     checkSchema(createUserValidationSchema),
+//     (request, response) => {
+      
+//         const result = validationResult(request) // extract validation errors
+//         console.log(result)
+
+//         // check if there are validation errors
+//         if(!result.isEmpty()) {
+//             return response.status(400).send({ errors: result.array()})
+//         }
+
+//         // will give you the validated data
+//         const data = matchedData(request)
+
+//         // Create new user
+//         const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...data}
+//         mockUsers.push(newUser)
+
+//         return response.status(201).send(newUser)
+// })
+
 router.post("/api/users", 
     checkSchema(createUserValidationSchema),
-    (request, response) => {
-      
-        const result = validationResult(request) // extract validation errors
-        console.log(result)
+    async (request, response) => {
+        const result = validationResult(request)
+        if (!result.isEmpty()) return response.status(400).send(result.array())
 
-        // check if there are validation errors
-        if(!result.isEmpty()) {
-            return response.status(400).send({ errors: result.array()})
-        }
-
-        // will give you the validated data
         const data = matchedData(request)
+        console.log(data)
+        const newUser = new User(data)
+        try {
+            const saveUser = await newUser.save()
+            return response.status(201).send(saveUser)
+        } catch (err) {
+            console.log(err)
+            return response.sendStatus(400)
+        }
+    })
 
-        // Create new user
-        const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...data}
-        mockUsers.push(newUser)
 
-        return response.status(201).send(newUser)
-})
 
 // Using a route parameter
 router.get("/api/users/:id", resolveIndexByUserId, (request, response) => {

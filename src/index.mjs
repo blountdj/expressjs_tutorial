@@ -4,12 +4,21 @@ import cookieParser from "cookie-parser"
 import session from 'express-session'
 import { mockUsers } from './utils/constants.mjs'
 import passport from 'passport'
+import mongoose from 'mongoose'
 import './strategies/local-strategy.mjs'
 
 // query is used for validating query parameters (used as middleware)
 // body is used for validating request bodies
 
+import "dotenv/config"
+
+
 const app = express()
+
+mongoose.connect(process.env.MONGODB_CONNECTION_STRING)
+    .then(() => console.log("Connected to Database"))
+    .catch((err) => console.log(`Error: ${err}`))
+
 
 
 // Add middleware using .use
